@@ -143,8 +143,7 @@
         }
 
         #endregion
-        public System.Windows.Forms.ListBox listBox_results;
-        //private System.Windows.Forms.ListBox listBox_results;
+        private System.Windows.Forms.ListBox listBox_results;
         private System.Windows.Forms.TextBox textBox_Path;
         private System.Windows.Forms.Button button_Go;
         private System.Windows.Forms.Button button_back;
