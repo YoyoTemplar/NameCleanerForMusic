@@ -13,7 +13,11 @@ namespace NameCleanerForMusic
     {
     public SongContext() : base("DBConnection")
         { 
-
+            //для создания бд если она не существует
+            //if (!Database.Exists())
+            //{
+            //    Database.Create();
+            //}
         }
 
         public DbSet<Song> Songs { get; set; }
