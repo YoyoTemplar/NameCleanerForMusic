@@ -16,69 +16,101 @@ namespace NameCleanerForMusic
     {
         public Form1()
         {
-            InitializeComponent();
+            InitializeComponent(); 
+            GetDrivesList();
+            UpdateFilesList();
         }
         public string FullPathSrc { get; set; }
         public string FileName { get; set; }
         public string FullPathDst { get; set; }
+        FileManager fm1 = new FileManager();
+        List<string> systemDrivesPaths = new List<string>();
 
-        private void button_Go_Click(object sender, EventArgs e)
+        //автообновление списка файлов для combobox
+        public void UpdateFilesList()
         {
-            listBox_results.Items.Clear();
-            FileManager fm1 = new FileManager();
-            listBox_results.Items.AddRange(fm1.GetDirectories(textBox_Path.Text));
-            listBox_results.Items.AddRange(fm1.GetFiles());
+
+            if (IsContainSystemChapter(systemDrivesPaths, comboBox_Path.Text))
+            {
+                if (comboBox_Path.Text.Length >= 3)
+                {
+                    listBox_results.Items.Clear();
+                    listBox_results.Items.AddRange(fm1.GetDirectories(comboBox_Path.Text));
+                    comboBox_Path.Text = fm1.resultPath;
+                    listBox_results.Items.AddRange(fm1.GetFiles());
+                }
+            }
+
+        }
+        //получение списка разделов жестких дисков
+        public void GetDrivesList()
+        {
+            systemDrivesPaths = FileManager.GetSystemDrivesPaths();
+            string[] listOfDrivesNamesForCombobox = new string[systemDrivesPaths.Count];
+            for (int i = 0; i < systemDrivesPaths.Count; i++)
+            {
+                listOfDrivesNamesForCombobox[i] = systemDrivesPaths[i];
+            }
+            comboBox_Path.Items.AddRange(listOfDrivesNamesForCombobox);
+        }
+
+        //проверка на соответствие разделов системных дисков
+        public bool IsContainSystemChapter(List<string>drives, string path)
+        {
+            foreach(var drive in drives)
+            {
+                if (path.Contains(drive.ToString()))
+                {
+                    return true;
+                }                
+            }
+            return false;
         }
 
         //открытие файла или переход в подпапку по двойному щелчку мышью
         private void listBox_results_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            if (Path.GetExtension(Path.Combine(textBox_Path.Text, listBox_results.SelectedItem.ToString())) == "")
+            if (Path.GetExtension(Path.Combine(comboBox_Path.Text, listBox_results.SelectedItem.ToString())) == "")
             {
-                textBox_Path.Text = Path.Combine(textBox_Path.Text, listBox_results.SelectedItem.ToString());
-                listBox_results.Items.Clear();
-                FileManager fm2 = new FileManager();
-                listBox_results.Items.AddRange(fm2.GetDirectories(textBox_Path.Text));
-                listBox_results.Items.AddRange(fm2.GetFiles());
+                comboBox_Path.Text = Path.Combine(comboBox_Path.Text, listBox_results.SelectedItem.ToString());
+                UpdateFilesList();
             }
             else
             {
-                Process.Start(Path.Combine(textBox_Path.Text, listBox_results.SelectedItem.ToString()));
+                Process.Start(Path.Combine(comboBox_Path.Text, listBox_results.SelectedItem.ToString()));
             }
         }
 
+        //переход назад по каталогу
         private void button_back_Click(object sender, EventArgs e)
         {
-            if (textBox_Path.Text[textBox_Path.Text.Length - 1] == '\\')
+            if ((comboBox_Path.Text.Length > 3) && (comboBox_Path.Text[comboBox_Path.Text.Length - 1] == '\\'))
             {
-                textBox_Path.Text = textBox_Path.Text.Remove(textBox_Path.Text.Length - 1, 1);
-                while (textBox_Path.Text[textBox_Path.Text.Length - 1] != '\\')
+                comboBox_Path.Text = comboBox_Path.Text.Remove(comboBox_Path.Text.Length - 1, 1);
+                while ((comboBox_Path.Text.Length > 3) && (comboBox_Path.Text[comboBox_Path.Text.Length - 1] != '\\'))
                 {
-                    textBox_Path.Text = textBox_Path.Text.Remove(textBox_Path.Text.Length - 1, 1);
+                    comboBox_Path.Text = comboBox_Path.Text.Remove(comboBox_Path.Text.Length - 1, 1);
                 }
             }
-            else if (textBox_Path.Text[textBox_Path.Text.Length -1] != '\\')
+            else if ((comboBox_Path.Text.Length > 3) && (comboBox_Path.Text[comboBox_Path.Text.Length - 1] != '\\'))
             {
-                while (textBox_Path.Text[textBox_Path.Text.Length - 1] != '\\')
+                while ((comboBox_Path.Text.Length > 3) && (comboBox_Path.Text[comboBox_Path.Text.Length - 1] != '\\'))
                 {
-                    textBox_Path.Text = textBox_Path.Text.Remove(textBox_Path.Text.Length - 1, 1);
+                    comboBox_Path.Text = comboBox_Path.Text.Remove(comboBox_Path.Text.Length - 1, 1);
                 }
             }
-            listBox_results.Items.Clear();
-            FileManager fm3 = new FileManager();
-            listBox_results.Items.AddRange(fm3.GetDirectories(textBox_Path.Text));
-            listBox_results.Items.AddRange(fm3.GetFiles());
+            UpdateFilesList();
         }
 
         //управление контекстным меню
         private void listBox_results_MouseUp(object sender, MouseEventArgs e)
-        {          
+        {
             if (listBox_results.SelectedIndices.Count > 0 & listBox_results.SelectedIndices.Count < 2 && e.Button == MouseButtons.Right)
             {
                 contextMenuStrip_listBox_results.Enabled = true;
                 ToolStripMenuItem_ClearName.Enabled = true;
                 toolStripMenuItem_ClearSelected.Enabled = false;
-                contextMenuStrip_listBox_results.Show(MousePosition, ToolStripDropDownDirection.Right);      
+                contextMenuStrip_listBox_results.Show(MousePosition, ToolStripDropDownDirection.Right);
             }
             else if (listBox_results.SelectedIndices.Count > 1 && e.Button == MouseButtons.Right)
             {
@@ -92,36 +124,31 @@ namespace NameCleanerForMusic
                 contextMenuStrip_listBox_results.Enabled = false;
             }
         }
-       
+
+        //единичная очистка имени
         private async void ToolStripMenuItem_ClearName_Click(object sender, EventArgs e)
         {
-            //единичная очистка имени
             using (SongContext db = new SongContext())
             {
                 FileName = listBox_results.SelectedItem.ToString();
                 NameEditor musicName = new NameEditor(FileName);
-                FullPathSrc = Path.Combine(textBox_Path.Text, listBox_results.SelectedItem.ToString());
-                FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
+                FullPathSrc = Path.Combine(comboBox_Path.Text, listBox_results.SelectedItem.ToString());
+                FullPathDst = Path.Combine(comboBox_Path.Text, musicName.RenameMusic());
                 if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
                 {
                     File.Move(FullPathSrc, FullPathDst);
                     Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.UtcNow };
                     db.Songs.Add(s1);
                     await db.SaveChangesAsync();
-                    File.Delete(FullPathSrc);                    
+                    File.Delete(FullPathSrc);
                 }
             }
-
-            //автообновление страницы
-            listBox_results.Items.Clear();
-            FileManager fm3 = new FileManager();
-            listBox_results.Items.AddRange(fm3.GetDirectories(textBox_Path.Text));
-            listBox_results.Items.AddRange(fm3.GetFiles());
+            UpdateFilesList();
         }
 
+        // множественная очистка имён
         private async void toolStripMenuItem_ClearSelected_Click(object sender, EventArgs e)
         {
-            // множественная очистка имён
             List<Song> songsCollection = new List<Song>();
             using (SongContext db = new SongContext())
             {
@@ -129,9 +156,9 @@ namespace NameCleanerForMusic
                 {
                     FileName = listBoxItem.ToString();
                     NameEditor musicName = new NameEditor(FileName);
-                FullPathSrc = Path.Combine(textBox_Path.Text, listBoxItem.ToString());
-                FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
-                if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
+                    FullPathSrc = Path.Combine(comboBox_Path.Text, listBoxItem.ToString());
+                    FullPathDst = Path.Combine(comboBox_Path.Text, musicName.RenameMusic());
+                    if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
                     {
                         File.Move(FullPathSrc, FullPathDst);
                         Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.Now, Path = Path.GetDirectoryName(FullPathDst) };
@@ -140,100 +167,19 @@ namespace NameCleanerForMusic
                     }
                 }
                 db.Songs.AddRange(songsCollection);
-                await db.SaveChangesAsync();         
+                await db.SaveChangesAsync();
             }
             songsCollection.Clear();
-
-            //автообновление страницы
-            listBox_results.Items.Clear();
-            FileManager fm4 = new FileManager();
-            listBox_results.Items.AddRange(fm4.GetDirectories(textBox_Path.Text));
-            listBox_results.Items.AddRange(fm4.GetFiles());
-
-
-            //-------------------------
-
-            //List<string> listBoxResultsNames = new List<string>();
-
-
-            //for (int i = 0; i < listBox_results.SelectedItems.Count; i++)
-            //{
-            //    listBoxResultsNames.Add(listBox_results.SelectedItems[i].ToString());
-            //}
-            //using (SongContext db = new SongContext())
-            //{
-            //    foreach (ListBox listBox in listBox_results.SelectedItems)
-            //    {
-            //        NameEditor musicName = new NameEditor(listBox.Name.ToString());
-            //        FullPathSrc = Path.Combine(textBox_Path.Text, listBox.Name.ToString());
-            //        FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
-            //        if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
-            //        {
-            //            File.Move(FullPathSrc, FullPathDst);
-            //            Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.Now, Path = Path.GetDirectoryName(FullPathDst) };
-            //            db.Songs.Add(s1);
-            //            db.SaveChanges();
-            //            File.Delete(FullPathSrc);
-            //        }
-            //    }
-            //    //foreach (var listBoxResultName in listBoxResultsNames)
-            //    //    {
-            //    //        NameEditor musicName = new NameEditor(listBoxResultName);
-            //    //        FullPathSrc = Path.Combine(textBox_Path.Text, listBoxResultName);
-            //    //        FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
-            //    //        if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
-            //    //        {
-            //    //            File.Move(FullPathSrc, FullPathDst);
-            //    //            Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.Now, Path = Path.GetDirectoryName(FullPathDst) };
-            //    //            db.Songs.Add(s1);
-            //    //            db.SaveChanges();
-            //    //            File.Delete(FullPathSrc);
-            //    //        }
-            //    //    }
-            //}
-
-            ////using (SongContext db = new SongContext())
-            ////{
-
-            ////    foreach (var listBoxResultName in listBoxResultsNames)
-            ////    {
-            ////        NameEditor musicName = new NameEditor(listBoxResultName);
-            ////        FullPathSrc = Path.Combine(textBox_Path.Text, listBoxResultName);
-            ////        FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
-            ////        if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
-            ////        {
-            ////            File.Move(FullPathSrc, FullPathDst);
-            ////            Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.Now, Path = Path.GetDirectoryName(FullPathDst) };
-            ////            db.Songs.Add(s1);
-            ////            db.SaveChanges();
-            ////            File.Delete(FullPathSrc);
-            ////            //Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.UtcNow };
-            ////        }
-            ////    }
-            ////    //foreach (var listBoxResultName in listBoxResultsNames)
-            ////    //{
-            ////    //    NameEditor musicName = new NameEditor(listBoxResultName);
-            ////    //    FullPathSrc = Path.Combine(textBox_Path.Text, listBoxResultName);
-            ////    //    FullPathDst = Path.Combine(textBox_Path.Text, musicName.RenameMusic());
-            ////    //    if (!FullPathSrc.Equals(FullPathDst) && File.Exists(FullPathSrc) && !File.Exists(FullPathDst))
-            ////    //    {
-            ////    //        File.Move(FullPathSrc, FullPathDst);
-            ////    //        File.Delete(FullPathSrc);
-            ////    //        //using (SongContext db = new SongContext())
-            ////    //        //{
-            ////    //        //    Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.UtcNow };
-            ////    //        //    db.Songs.Add(s1);
-            ////    //        //    db.SaveChanges();
-            ////    //        //}
-            ////    //        Song s1 = new Song { OldName = musicName.GetNameFromPath(FullPathSrc), NewName = musicName.GetNameFromPath(FullPathDst), DateOfChange = DateTime.UtcNow };
-            ////    //        db.Songs.Add(s1);
-            ////    //        db.SaveChanges();
-            ////    //    }
-            ////}
-
-            //-------------------------
+            UpdateFilesList();
         }
 
-
+        //переход по нажатию enter в адресной строке
+        private void comboBox_Path_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyData == Keys.Enter)
+            {
+                UpdateFilesList();
+            }
+        }
     }
 }
